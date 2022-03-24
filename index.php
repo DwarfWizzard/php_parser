@@ -1,89 +1,66 @@
 <?php
-/* Получаем исходный код страницы */
-$html = file_get_contents('https://www.nosu.ru/');
-/* Класс DOMDocument предназначен для работы с кодом HTML и XML */
-$doc = new DOMDocument();
-/* Загружаем html в класс */
-$doc->loadHTML($html);
-/* Класс DOMXpath реализует язык запросов XPath к элементам XML-документа */
-$xpath = new DOMXpath($doc);
+/* Подключаемся к БД (имя сервера, имя пользователя БД, пароль БД, имя БД)*/
+//$mysqli = new mysqli("localhost", "cc08668_osnews", "Pm21Pm21Pm21", "cc08668_osnews");
+$mysqli = new mysqli("localhost", "root", "", "ossetia_news");
 
-$img_full_path = './uploads/';
-$img_tmb_path = './uploads/thumbnails/';
+/* Получаем Xpath главной страницы */
+$mainPageXpath = getXpath('https://vladikavkaz-osetia.ru/news/');
 
 /* Находим все контейнеры div с классом item (карточки новостей) в контейнере div склассом news-list */
-foreach ($xpath->query("//div[contains(@class, 'news-list')]//div[contains(@class, 'item')]") as $item) {
+foreach ($mainPageXpath->query("//div[contains(@class, 'news-list')]//a[contains(@class, 'item')]") as $item) {
   /* Находим DOM-элемент заголовка */
-  $title = $xpath->query(".//div[contains(@class, 'title')]//a", $item);
-  /* Получаем текстовое содержимое заголовка */
-  $title_text = $title[0]->textContent;
-  /* Получаем дату новости */
-  $date = $xpath->query(".//div[contains(@class, 'date')]", $item);
-  $date_text = $date[0]->textContent;
+  $title = $mainPageXpath->query(".//div[@class='news-content']//h3", $item);
 
-  $news_txt='';
-  $aa = $xpath->query(".//a", $item);
-  if($aa[0] !== null) {
-    $news_url = $aa[0]->getAttribute('href');
-    
-    $news_txt = getNewsText($news_url);
+  /* Получаем ссылку на новость */
+  $newsUrl = 'https://vladikavkaz-osetia.ru'.$item->getAttribute('href');
+
+  /* Получаем Xpath новости */
+  $newsText = null;
+  $articleXpath = getXpath($newsUrl);
+
+  /* Получаем дату */
+  $date = $articleXpath->query("//div[@class='news-detail']//span[@class='news-date-time']");
+  if($date[0] !== null) {
+    $dateText = $date[0]->textContent;
+    $newsDate = date("Y-m-d 00:00:00", strtotime($dateText));
   }
+
   /* Находим DOM-элемент изображения */
-  $image = $xpath->query(".//a//img", $item);
+  $image = $articleXpath->query("//div[@class='news-detail']//img");
   /* Если элемент не пустой получаем значение атрибута src */
   
   if($image[0] !== null) {
     //Миниатюра 
-    $image_tmb = $image[0]->getAttribute('src');               // Ссылка на миниатюру
-    $image_tmb_binary = file_get_contents($image_tmb);         // Бинарный код изображения
-
-    //Исходное изображение 
-    $image_full = str_replace('-350x230', '', $image_tmb);  // Ссылка на исходное
-    $image_full_binary = file_get_contents($image_full);    // Бинарный код изображения
-
-    file_put_contents($img_tmb_path.getGUID()."_tmb".".jpg", $image_tmb_binary);
-    file_put_contents($img_full_path.getGUID().".jpg", $image_full_binary);
+    $imageFull = $image[0]->getAttribute('src');           // Ссылка на миниатюру
   }
 
-  echo "<h3>{$title_text}</h3>";
-  echo "<date>{$date_text}<date>";
-  echo "<h4>{$news_txt}</h4>";
-  echo "<div><img src=\"{$image_tmb}\"></div>";
+  foreach($articleXpath->query("//div[@class='news-detail']//p") as $key => $articleElement) {
+    if($key == 0) {
+      	
+    }
+    $newsText .= $articleElement->textContent."\n";
+  }
+
+  /* Получаем текстовое содержимое заголовка */
+  $titleText = $title[0]->textContent;
+
+  /* Добавляем новость в таблицу news*/
+  $mysqli->query("INSERT INTO `news`
+  (`website_id`,`title`,`date`,`text`,`img`,`url`)
+  VALUES (13, '{$titleText}', '{$newsDate}', '{$newsText}', '{$imageFull}','{$newsUrl}')");
 }
 
-function getNewsText($url) {
-  $news_html = file_get_contents($url);
-  $html_doc = new DOMDocument();
-  $html_doc->loadHTML($news_html);
+function getXpath($url) {
+  /* Получаем исходный код страницы */
+  $html = file_get_contents($url);
+  /* Класс DOMDocument предназначен для работы с кодом HTML и XML */
+  $doc = new DOMDocument();
+  /* Загружаем html в класс */
+  libxml_use_internal_errors(true);
+  $doc->loadHTML($html);
+  libxml_clear_errors();
+  /* Класс DOMXpath реализует язык запросов XPath к элементам XML-документа */
+  $xpath = new DOMXpath($doc);
 
-  $news_xpath = new DOMXpath($html_doc);
-
-  $text = '';
-
-
-  foreach($news_xpath->query("//div[@class='content-block content-text']//p") as $item) {
-    $text .= $item->textContent."\n";
-  }
-
-  $html_doc = null;
-  return $text;
-}
-
-function getGUID(){
-  if (function_exists('com_create_guid')){
-      return com_create_guid();
-  }
-  else {
-      mt_srand((double)microtime()*10000);//optional for php 4.2.0 and up.
-      $charid = strtoupper(md5(uniqid(rand(), true)));
-      $hyphen = chr(45);// "-"
-      $uuid = chr(123)// "{"
-          .substr($charid, 0, 8).$hyphen
-          .substr($charid, 8, 4).$hyphen
-          .substr($charid,12, 4).$hyphen
-          .substr($charid,16, 4).$hyphen
-          .substr($charid,20,12)
-          .chr(125);// "}"
-      return $uuid;
-  }
+  return $xpath;
 }
