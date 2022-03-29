@@ -1,10 +1,14 @@
 <?php
 /* Подключаемся к БД (имя сервера, имя пользователя БД, пароль БД, имя БД)*/
 //$mysqli = new mysqli("localhost", "cc08668_osnews", "Pm21Pm21Pm21", "cc08668_osnews");
-$mysqli = new mysqli("localhost", "root", "", "ossetia_news");
+$mysqli = new mysqli("localhost", "root", "", "cc08668_osnews");
 
 /* Получаем Xpath главной страницы */
-$mainPageXpath = getXpath('https://vladikavkaz-osetia.ru/news/');
+
+/* Будем получать новости с первых 5 страниц */
+for ($page = 1; $page <= 5; $page++) {
+
+$mainPageXpath = getXpath("https://vladikavkaz-osetia.ru/news/?PAGEN_1=$page");
 
 /* Находим все контейнеры div с классом item (карточки новостей) в контейнере div склассом news-list */
 foreach ($mainPageXpath->query("//div[contains(@class, 'news-list')]//a[contains(@class, 'item')]") as $item) {
@@ -34,11 +38,13 @@ foreach ($mainPageXpath->query("//div[contains(@class, 'news-list')]//a[contains
     $imageFull = $image[0]->getAttribute('src');           // Ссылка на миниатюру
   }
 
-  foreach($articleXpath->query("//div[@class='news-detail']//p") as $key => $articleElement) {
-    if($key == 0) {
-      	
-    }
-    $newsText .= $articleElement->textContent."\n";
+  foreach($articleXpath->query("//div[@class='news-detail']") as $key => $articleElement) {
+    $newsText .= strip_tags($articleElement->textContent."\n");
+    /* Заменяем все \n \t на единичные экземпляры */
+    $newsText = preg_replace("/(\r?\n){2,}/", "\n", $newsText);
+    $newsText = preg_replace("/(\r?\t){2,}/", "\t", $newsText);
+    /* Удаляем в конце в начале каждой новости ненужные \n, \t, , : */
+    $newsText = trim($newsText, " \n\t:");
   }
 
   /* Получаем текстовое содержимое заголовка */
@@ -49,18 +55,26 @@ foreach ($mainPageXpath->query("//div[contains(@class, 'news-list')]//a[contains
   (`website_id`,`title`,`date`,`text`,`img`,`url`)
   VALUES (13, '{$titleText}', '{$newsDate}', '{$newsText}', '{$imageFull}','{$newsUrl}')");
 }
+}
+
 
 function getXpath($url) {
+    $arrContextOptions=array(
+        "ssl"=>array(
+            "verify_peer"=>false,
+            "verify_peer_name"=>false,
+        ),
+    );
   /* Получаем исходный код страницы */
-  $html = file_get_contents($url);
+    $html = file_get_contents($url, false,  stream_context_create($arrContextOptions));
   /* Класс DOMDocument предназначен для работы с кодом HTML и XML */
-  $doc = new DOMDocument();
+    $doc = new DOMDocument();
   /* Загружаем html в класс */
-  libxml_use_internal_errors(true);
-  $doc->loadHTML($html);
-  libxml_clear_errors();
+    libxml_use_internal_errors(true);
+    $doc->loadHTML($html);
+    libxml_clear_errors();
   /* Класс DOMXpath реализует язык запросов XPath к элементам XML-документа */
-  $xpath = new DOMXpath($doc);
+    $xpath = new DOMXpath($doc);
 
   return $xpath;
 }
