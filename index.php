@@ -53,9 +53,12 @@ function parseWebsite($url) {
     $titleText = $title[0]->textContent;
   
     /* Добавляем новость в таблицу news*/
-    $GLOBALS["mysqli"]->query("INSERT INTO `news`
-    (`website_id`,`title`,`date`,`text`,`img`,`url`)
-    VALUES (13, '{$titleText}', '{$newsDate}', '{$newsText}', '{$imageFull}','{$newsUrl}')");
+    try {
+      $GLOBALS["mysqli"]->query("INSERT INTO `news`
+      (`website_id`,`title`,`date`,`text`,`img`,`url`)
+      VALUES (13, '{$titleText}', '{$newsDate}', '{$newsText}', '{$imageFull}','{$newsUrl}')");
+    }catch (Exception $e){
+    }
   }
 }
 
@@ -98,38 +101,38 @@ function outputNews() {
 
   echo "<body><div class=\"container\">";
 
-  for ($i = 0; $i<count((array)$news)/3; $i+=3) {
-    echo "<div class=\"row\">";
-      for ($j = $i; $j<=$i+3; $j++) {
-        $img = 'https://vladikavkaz-osetia.ru'.$news[$j]['img'];
-        $href = $news[$j]['url'];
-        $title = $news[$j]['title'];
-        $text = mb_substr($news[$j]['text'], 0, 127).'...';
-        echo "<div class=\"col-sm\"><div class=\"card\" style=\"width: 18rem;\">
-                <img src=\"$img\" class=\"card-img-top\" alt=\"$title\">
-                <div class=\"card-body\">
-                  <h5 class=\"card-title\">$title</h5>
-                  <p class=\"card-text\">$text</p>
-                  <a href=\"$href\" class=\"btn btn-primary\">Открыть новость</a>
-                </div>
-              </div></div>";
-      }
-    echo "</div>";
-  }
-
-  // foreach($news as $article) {
-  //   $img = 'https://vladikavkaz-osetia.ru'.$article['img'];
-  //   $href = $article['url'];
-  //   $title = $article['title'];
-  //   $text = mb_substr($article['text'], 0, 127).'...';
-  //   echo "<div class=\"col-sm\"><div class=\"card\" style=\"width: 18rem;\">
-  //           <img src=\"$img\" class=\"card-img-top\" alt=\"$title\">
-  //           <div class=\"card-body\">
-  //             <h5 class=\"card-title\">$title</h5>
-  //             <p class=\"card-text\">$text</p>
-  //             <a href=\"$href\" class=\"btn btn-primary\">Открыть новость</a>
-  //           </div>
-  //         </div></div>";
+  // for ($i = 0; $i<count((array)$news)/3; $i+=3) {
+  //   echo "<div class=\"row\">";
+  //     for ($j = $i; $j<=$i+3; $j++) {
+  //       $img = 'https://vladikavkaz-osetia.ru'.$news[$j]['img'];
+  //       $href = $news[$j]['url'];
+  //       $title = $news[$j]['title'];
+  //       $text = mb_substr($news[$j]['text'], 0, 127).'...';
+  //       echo "<div class=\"col-sm\"><div class=\"card\" style=\"width: 18rem;\">
+  //               <img src=\"$img\" class=\"card-img-top\" alt=\"$title\">
+  //               <div class=\"card-body\">
+  //                 <h5 class=\"card-title\">$title</h5>
+  //                 <p class=\"card-text\">$text</p>
+  //                 <a href=\"$href\" class=\"btn btn-primary\">Открыть новость</a>
+  //               </div>
+  //             </div></div>";
+  //     }
+  //   echo "</div>";
   // }
+
+  foreach($news as $article) {
+    $img = 'https://vladikavkaz-osetia.ru'.$article['img'];
+    $href = $article['url'];
+    $title = $article['title'];
+    $text = mb_substr($article['text'], 0, 127).'...';
+    echo "<div class=\"col-sm\"><div class=\"card\" style=\"width: 18rem;\">
+            <img src=\"$img\" class=\"card-img-top\" alt=\"$title\">
+            <div class=\"card-body\">
+              <h5 class=\"card-title\">$title</h5>
+              <p class=\"card-text\">$text</p>
+              <a href=\"$href\" class=\"btn btn-primary\">Открыть новость</a>
+            </div>
+          </div></div>";
+    }
   echo "</div></body>";
 }
